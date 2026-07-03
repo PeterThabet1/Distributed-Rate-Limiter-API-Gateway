@@ -4,18 +4,32 @@ const redis = require('redis');
 const fs = require('fs');
 const path = require('path');
 
+const REDIS_HOST = process.env.REDIS_HOST;
+const REDIS_PORT = Number(process.env.REDIS_PORT);
+
 const app = express();
 const client = redis.createClient({
-    host: process.env.REDIS_HOST,
-    port: process.env.REDIS_PORT
+    socket: {
+        host: REDIS_HOST,
+        port: REDIS_PORT
+    }
 });
 
 async function connectRedis() {
-    try {
-        await client.connect();
-        console.log('Connected to Redis');
-    } catch (err) {
-        console.error('Could not connect to Redis:', err);
+    const maxAttempts = 10;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            await client.connect();
+            console.log(`Connected to Redis after ${REDIS_HOST}:${REDIS_PORT}`);
+            return;
+        } catch (err) {
+            console.error(`Redis connection attempt ${attempt}/${maxAttempts} failed:`, err.message);
+            if (attempt === maxAttempts) {
+                console.error('could not connect to Redis. Exiting.');
+                process.exit(1);
+            }
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
     }
 }
 
@@ -50,8 +64,13 @@ app.get('/', (req, res) => {
 });
 
 
-const PORT = process.env.PORT;
-app.listen(PORT, async() => {
-    console.log(`Server is running on port ${PORT}`);
+
+async function startServer() {
+    const PORT = Number(process.env.PORT);
     await connectRedis();
-});
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+}
+
+startServer();
