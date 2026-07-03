@@ -3,11 +3,13 @@ const express = require('express');
 const redis = require('redis');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 const REDIS_HOST = process.env.REDIS_HOST;
 const REDIS_PORT = Number(process.env.REDIS_PORT);
 
 const app = express();
+
 const client = redis.createClient({
     socket: {
         host: REDIS_HOST,
@@ -60,7 +62,7 @@ async function rateLimiter(req, res, next) {
 app.use(rateLimiter);
 
 app.get('/', (req, res) => {
-    res.status(200).send('Welcome to the rate-limited API!');
+    res.status(200).send(`Welcome to the rate-limited API! from ${os.hostname()}`);
 });
 
 
